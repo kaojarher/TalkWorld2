@@ -1,4 +1,4 @@
-name: Deploy TalkWorld to GitHub Pages
+name: Deploy TalkWorld to GitHub Pages 
 
 on:
   push:
