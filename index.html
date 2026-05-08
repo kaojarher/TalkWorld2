@@ -1,0 +1,1514 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TalkWorld × Puter</title>
+    <script src="https://js.puter.com/v2/"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@300;400;500&display=swap');
+
+        :root {
+            --bg: #0f1a14;
+            --bg2: #142010;
+            --bg3: #1a2a1c;
+            --panel: #1e3020;
+            --border: rgba(120, 180, 100, 0.2);
+            --accent: #7eb87e;
+            --accent2: #c8a45a;
+            --accent3: #89c4e1;
+            --text: #e8f0e6;
+            --text2: #a0b898;
+            --text3: #607060;
+            --glow: rgba(126, 184, 126, 0.3);
+            --glow2: rgba(200, 164, 90, 0.2);
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh; height: 100dvh;
+            overflow: hidden;
+            display: flex; flex-direction: column;
+        }
+        #starfield { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+
+        /* ===== PUTER STATUS BAR (replaces apikey-bar) ===== */
+        .puter-bar {
+            position: relative; z-index: 10;
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+            padding: 6px 12px;
+            background: rgba(10, 20, 15, 0.95);
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(8px);
+            flex-shrink: 0;
+        }
+        .puter-logo { font-size: 0.7rem; font-weight: 700; color: var(--accent3); letter-spacing: 0.05em; white-space: nowrap; }
+        .puter-badge {
+            font-size: 0.68rem; font-weight: 700;
+            padding: 2px 10px; border-radius: 20px; white-space: nowrap;
+        }
+        .puter-badge.loading { background: rgba(100,100,100,0.2); color: var(--text3); }
+        .puter-badge.ok { background: rgba(80,180,100,0.18); color: #6dffb0; }
+        .puter-badge.anon { background: rgba(200,164,90,0.18); color: var(--accent2); }
+        .puter-badge.error { background: rgba(220,80,80,0.18); color: #ff8080; }
+        #puterLoginBtn {
+            font-size: 0.68rem; padding: 3px 12px;
+            background: linear-gradient(135deg, var(--accent), #5a9460);
+            border: none; border-radius: 20px; color: white;
+            cursor: pointer; transition: all 0.2s; white-space: nowrap;
+        }
+        #puterLoginBtn:hover { transform: translateY(-1px); box-shadow: 0 3px 10px var(--glow); }
+        .puter-free-tag { font-size: 0.65rem; color: var(--text3); margin-left: auto; }
+
+        /* ===== HEADER ===== */
+        header {
+            position: relative; z-index: 10;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 16px;
+            background: rgba(10, 10, 18, 0.9);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .logo {
+            font-family: 'Noto Serif TC', serif; font-size: 1.3rem;
+            background: linear-gradient(135deg, var(--accent), #5a9460);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            letter-spacing: 0.02em;
+        }
+        .logo span { font-style: italic; }
+        .puter-powered { font-size: 0.6rem; color: var(--accent3); opacity: 0.7; margin-left: 6px; }
+        .header-actions { display: flex; gap: 6px; align-items: center; }
+        .btn-icon {
+            width: 32px; height: 32px;
+            background: var(--panel); border: 1px solid var(--border); border-radius: 50%;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 0.9rem; color: var(--text2); transition: all 0.2s;
+        }
+        .btn-icon:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* ===== NAV ===== */
+        .nav {
+            position: relative; z-index: 10;
+            display: flex; background: var(--bg2);
+            border-bottom: 1px solid var(--border);
+            padding: 0 8px; gap: 2px;
+            overflow-x: auto; scrollbar-width: none; flex-shrink: 0;
+        }
+        .nav::-webkit-scrollbar { display: none; }
+        .nav-tab {
+            padding: 8px 12px; cursor: pointer; font-size: 0.8rem; font-weight: 500;
+            color: var(--text3); border-bottom: 2px solid transparent;
+            white-space: nowrap; transition: all 0.2s; user-select: none;
+        }
+        .nav-tab:hover { color: var(--text2); }
+        .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+        /* ===== MAIN ===== */
+        .main { position: relative; z-index: 5; flex: 1; overflow: hidden; display: flex; }
+        .panel { display: none; width: 100%; height: 100%; overflow: hidden; }
+        .panel.active { display: flex; }
+
+        /* ===== CHAT PANEL ===== */
+        .chat-panel { display: none; flex-direction: row; height: 100%; }
+        .chat-panel.active { display: flex; }
+        .sidebar {
+            width: 220px; min-width: 180px;
+            background: var(--bg2); border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        .sidebar-header {
+            padding: 12px 14px; font-size: 0.75rem; text-transform: uppercase;
+            letter-spacing: 0.1em; color: var(--text3); border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .char-list { flex: 1; overflow-y: auto; padding: 6px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+        .char-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 10px; border-radius: var(--radius-sm);
+            cursor: pointer; transition: all 0.15s; border: 1px solid transparent;
+        }
+        .char-item:hover { background: var(--panel); }
+        .char-item.active { background: rgba(126,184,126,0.1); border-color: rgba(126,184,126,0.3); }
+        .char-avatar-sm { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; overflow: hidden; border: 2px solid var(--border); }
+        .char-info { flex: 1; min-width: 0; }
+        .char-name { font-size: 0.85rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .char-role { font-size: 0.7rem; color: var(--text3); }
+
+        .chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+        .chat-header {
+            padding: 10px 14px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 10px;
+            background: rgba(26, 26, 48, 0.5); flex-shrink: 0;
+        }
+        .chat-char-avatar { width: 40px; height: 40px; border-radius: 50%; overflow: hidden; border: 2px solid var(--accent); box-shadow: 0 0 10px var(--glow); flex-shrink: 0; }
+        .chat-char-info .name { font-family: 'Noto Serif TC', serif; font-size: 1rem; }
+        .chat-char-info .status { font-size: 0.7rem; color: #6dffb0; display: flex; align-items: center; gap: 4px; }
+        .status-dot { width: 6px; height: 6px; background: #6dffb0; border-radius: 50%; animation: pulse-green 2s infinite; }
+        @keyframes pulse-green { 0%,100%{opacity:1;}50%{opacity:0.4;} }
+
+        .messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+        .msg { display: flex; gap: 8px; animation: msg-in 0.3s ease-out; }
+        @keyframes msg-in { from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);} }
+        .msg.user { flex-direction: row-reverse; }
+        .msg-avatar { width: 30px; height: 30px; border-radius: 50%; overflow: hidden; flex-shrink: 0; border: 1px solid var(--border); }
+        .msg-bubble { max-width: 75%; padding: 8px 12px; border-radius: 14px; font-size: 0.85rem; line-height: 1.5; position: relative; }
+        .msg.ai .msg-bubble { background: var(--panel); border: 1px solid var(--border); border-radius: 4px 16px 16px 16px; box-shadow: 0 2px 6px rgba(0,60,0,0.15); }
+        .msg.user .msg-bubble { background: linear-gradient(135deg, var(--accent), #5a9460); border-radius: 16px 4px 16px 16px; }
+        .msg-sender { font-size: 0.7rem; color: var(--text3); margin-bottom: 2px; }
+
+        /* streaming cursor */
+        .stream-cursor::after { content:'▍'; animation: blink 0.7s infinite; color: var(--accent); }
+        @keyframes blink { 0%,100%{opacity:1;}50%{opacity:0;} }
+
+        .typing-indicator { display: flex; gap: 4px; align-items: center; padding: 2px 0; }
+        .typing-dot { width: 6px; height: 6px; background: var(--text3); border-radius: 50%; animation: typing 1.2s infinite; }
+        .typing-dot:nth-child(2){animation-delay:0.2s;} .typing-dot:nth-child(3){animation-delay:0.4s;}
+        @keyframes typing { 0%,60%,100%{transform:translateY(0);opacity:0.4;}30%{transform:translateY(-5px);opacity:1;} }
+
+        .chat-input-area {
+            padding: 8px 12px; border-top: 1px solid var(--border);
+            display: flex; gap: 8px; align-items: flex-end;
+            background: rgba(10,10,18,0.7); flex-shrink: 0;
+        }
+        textarea.chat-input {
+            flex: 1; background: var(--panel); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); color: var(--text);
+            font-family: 'Noto Sans TC', sans-serif; font-size: 0.85rem;
+            padding: 8px 12px; resize: none; min-height: 38px; max-height: 100px;
+            outline: none; transition: border-color 0.2s; line-height: 1.4;
+        }
+        textarea.chat-input:focus { border-color: var(--accent); }
+        .btn-send {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, var(--accent), #5a9460);
+            border: none; border-radius: var(--radius-sm); color: white;
+            font-family: 'Noto Sans TC', sans-serif; font-size: 0.85rem; font-weight: 500;
+            cursor: pointer; transition: all 0.2s; white-space: nowrap; height: 38px; flex-shrink: 0;
+        }
+        .btn-send:hover { transform: translateY(-1px); box-shadow: 0 4px 14px var(--glow); }
+        .btn-send:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .emotion-bar {
+            display: flex; gap: 4px; padding: 6px 12px;
+            border-top: 1px solid var(--border);
+            background: rgba(16,16,30,0.8); flex-shrink: 0; flex-wrap: wrap;
+        }
+        .emotion-btn {
+            padding: 3px 10px; background: var(--panel); border: 1px solid var(--border);
+            border-radius: 20px; color: var(--text3); font-size: 0.72rem; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+        }
+        .emotion-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+        .memory-panel { width: 200px; background: var(--bg2); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+        .memory-header { padding: 12px 14px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text3); border-bottom: 1px solid var(--border); }
+        .memory-list { flex: 1; overflow-y: auto; padding: 8px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+        .memory-item { padding: 6px 8px; background: var(--panel); border-radius: var(--radius-sm); margin-bottom: 5px; font-size: 0.75rem; color: var(--text2); border-left: 2px solid var(--accent); }
+        .memory-item .mem-key { color: var(--accent3); font-weight: 500; font-size: 0.7rem; }
+
+        /* TTS */
+        .tts-controls { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+        .tts-btn { background: none; border: 1px solid var(--border); border-radius: 20px; color: var(--text3); font-size: 0.68rem; padding: 2px 8px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 2px; }
+        .tts-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .tts-global { display: flex; align-items: center; gap: 6px; padding: 4px 12px; background: rgba(10,10,18,0.5); border-top: 1px solid var(--border); font-size: 0.7rem; color: var(--text3); flex-shrink: 0; }
+        .tts-toggle { position: relative; width: 30px; height: 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
+        .tts-toggle.on { background: var(--accent); border-color: var(--accent); }
+        .tts-toggle::after { content:''; position: absolute; width: 12px; height: 12px; background: white; border-radius: 50%; top: 1px; left: 1px; transition: left 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        .tts-toggle.on::after { left: 15px; }
+        .tts-wave { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; opacity: 0; transition: opacity 0.2s; }
+        .tts-wave.active { opacity: 1; }
+        .tts-wave span { display: block; width: 3px; background: var(--accent2); border-radius: 2px; animation: wave-bar 0.8s ease-in-out infinite; }
+        .tts-wave span:nth-child(1){height:4px;animation-delay:0s;} .tts-wave span:nth-child(2){height:8px;animation-delay:0.15s;} .tts-wave span:nth-child(3){height:5px;animation-delay:0.3s;} .tts-wave span:nth-child(4){height:10px;animation-delay:0.1s;}
+        @keyframes wave-bar { 0%,100%{transform:scaleY(0.4);}50%{transform:scaleY(1);} }
+
+        /* ===== CREATE PANEL ===== */
+        .create-panel { display: none; flex-direction: column; overflow-y: auto; padding: 16px; gap: 16px; }
+        .create-panel.active { display: flex; }
+        .section-title { font-family: 'Noto Serif TC', serif; font-size: 1.3rem; margin-bottom: 2px; }
+        .section-sub { font-size: 0.8rem; color: var(--text3); }
+        .create-grid { display: grid; grid-template-columns: 1fr 260px; gap: 16px; align-items: start; }
+        @media(max-width:750px){.create-grid{grid-template-columns:1fr;}}
+        .ai-portrait-col { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); }
+        .ai-portrait-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); display: flex; align-items: center; gap: 4px; }
+        .ai-portrait-label span { color: var(--accent3); }
+        #charAiPortraitWrapper { position: relative; width: 100%; aspect-ratio: 2/3; background: var(--bg3); border-radius: var(--radius-sm); overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); }
+        #charAiPortrait { width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-sm); display: none; }
+        #charAiPortraitPlaceholder { color: var(--text3); font-size: 0.75rem; text-align: center; padding: 12px; line-height: 1.5; }
+        #charAiPortraitLoading { display: none; position: absolute; inset: 0; background: rgba(10,20,15,0.88); backdrop-filter: blur(4px); flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+        .char-portrait-style-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+        .char-portrait-style-pills .style-pill { font-size: 0.7rem; padding: 2px 8px; }
+        .avatar-creator { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 20px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); }
+        #avatarCanvas { width: 160px; height: 160px; border-radius: 50%; border: 3px solid var(--accent); box-shadow: 0 0 20px var(--glow); }
+        .avatar-controls { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
+        .avatar-ctrl-btn { padding: 4px 10px; background: var(--bg3); border: 1px solid var(--border); border-radius: 20px; font-size: 0.72rem; color: var(--text2); cursor: pointer; transition: all 0.15s; }
+        .avatar-ctrl-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+        .avatar-ctrl-btn.sel { border-color: var(--accent); color: var(--accent); background: rgba(126,184,126,0.1); }
+        .form-group { margin-bottom: 12px; }
+        .form-label { display: block; font-size: 0.75rem; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+        .form-input, .form-select, .form-textarea { width: 100%; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: 'Noto Sans TC', sans-serif; font-size: 0.85rem; padding: 8px 12px; outline: none; transition: border-color 0.2s; }
+        .form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent);}
+        .form-textarea { resize: vertical; min-height: 70px; }
+        .form-select option { background: var(--panel); }
+        .trait-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+        .trait-btn { padding: 4px 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: 20px; font-size: 0.75rem; color: var(--text2); cursor: pointer; transition: all 0.15s; user-select: none; }
+        .trait-btn.sel { background: rgba(126,184,126,0.2); border-color: var(--accent); color: var(--accent); }
+        .btn-primary { padding: 10px 20px; background: linear-gradient(135deg, var(--accent), #5a9460); border: none; border-radius: var(--radius-sm); color: white; font-family: 'Noto Sans TC', sans-serif; font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 16px var(--glow); }
+        .btn-secondary { padding: 8px 16px; background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text2); font-family: 'Noto Sans TC', sans-serif; font-size: 0.82rem; cursor: pointer; transition: all 0.2s; }
+        .btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+        .char-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 12px; margin-top: 6px; }
+        .char-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
+        .char-card::before { content:''; position: absolute; inset: 0; background: linear-gradient(135deg,var(--glow),var(--glow2)); opacity: 0; transition: opacity 0.2s; }
+        .char-card:hover { border-color: var(--accent); transform: translateY(-3px); }
+        .char-card:hover::before { opacity: 1; }
+        .char-card .avatar { width: 70px; height: 70px; border-radius: 50%; overflow: hidden; border: 2px solid var(--accent); box-shadow: 0 0 10px var(--glow); position: relative; z-index: 1; }
+        .char-card .c-name { font-family: 'Noto Serif TC', serif; font-size: 0.9rem; text-align: center; position: relative; z-index: 1; }
+        .char-card .c-role { font-size: 0.72rem; color: var(--text3); text-align: center; position: relative; z-index: 1; }
+        .char-card .card-actions { display: flex; gap: 4px; position: relative; z-index: 1; }
+
+        /* ===== GROUP PANEL ===== */
+        .group-panel { display: none; flex-direction: column; height: 100%; }
+        .group-panel.active { display: flex; }
+        .group-header { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; background: rgba(26,26,48,0.5); flex-shrink: 0; flex-wrap: wrap; }
+        .group-avatars { display: flex; }
+        .group-avatar { width: 32px; height: 32px; border-radius: 50%; overflow: hidden; border: 2px solid var(--accent); margin-left: -8px; }
+        .group-avatar:first-child { margin-left: 0; }
+        .group-info .name { font-family: 'Noto Serif TC', serif; font-size: 0.95rem; }
+        .group-info .sub { font-size: 0.7rem; color: var(--text3); }
+        .group-participant-btns { display: flex; gap: 4px; flex-wrap: wrap; margin-left: auto; }
+        .gp-btn { display: flex; align-items: center; gap: 4px; padding: 4px 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 20px; color: var(--text3); font-size: 0.72rem; cursor: pointer; transition: all 0.15s; }
+        .gp-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(126,184,126,0.1); }
+
+        /* ===== WORLD PANEL ===== */
+        .world-panel { display: none; flex-direction: column; padding: 16px; gap: 16px; overflow-y: auto; }
+        .world-panel.active { display: flex; }
+        .world-map-container { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+        .world-map-container canvas { width: 100%; display: block; }
+
+        /* ===== STORY PANEL ===== */
+        .story-panel { display: none; flex-direction: column; padding: 16px; gap: 12px; overflow-y: auto; }
+        .story-panel.active { display: flex; }
+        .story-output { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; font-family: 'Noto Serif TC', serif; font-size: 0.9rem; line-height: 1.9; min-height: 180px; flex: 1; overflow-y: auto; white-space: pre-wrap; }
+        .style-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+        .style-pill { padding: 5px 14px; background: var(--bg3); border: 1px solid var(--border); border-radius: 20px; font-size: 0.75rem; color: var(--text2); cursor: pointer; transition: all 0.15s; }
+        .style-pill.sel { background: rgba(126,184,126,0.15); border-color: var(--accent); color: var(--accent); }
+        .story-controls { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        /* ===== MODALS ===== */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        .modal-overlay.open { display: flex; }
+        .modal { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; min-width: 280px; max-width: 480px; width: 90%; max-height: 85vh; overflow-y: auto; animation: modal-in 0.2s ease-out; }
+        @keyframes modal-in { from{opacity:0;transform:scale(0.95);}to{opacity:1;transform:scale(1);} }
+        .modal-title { font-family: 'Noto Serif TC', serif; font-size: 1.1rem; margin-bottom: 16px; }
+        .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+
+        /* ===== TOAST ===== */
+        .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--border); border-radius: 20px; padding: 8px 18px; font-size: 0.82rem; z-index: 200; animation: toast-in 0.2s ease-out, toast-out 0.3s ease-in 2.7s forwards; white-space: nowrap; }
+        @keyframes toast-in { from{opacity:0;transform:translate(-50%,10px);}to{opacity:1;transform:translate(-50%,0);} }
+        @keyframes toast-out { from{opacity:1;}to{opacity:0;} }
+
+        /* ===== PROGRESS ===== */
+        .progress-bar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; margin-top: 6px; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 2px; transition: width 0.3s; }
+        .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 10px; color: var(--text3); font-size: 0.85rem; }
+        .empty-state .icon { font-size: 2.5rem; }
+
+        /* ===== MOBILE ===== */
+        @media screen and (max-width:600px) {
+            .sidebar,.memory-panel{display:none!important;}
+            .chat-panel{flex-direction:column;}
+            .chat-area{width:100%;}
+            .msg-bubble{max-width:85%;font-size:0.8rem;}
+            .mobile-char-btn{display:inline-flex!important;align-items:center;justify-content:center;background:var(--panel);border:1px solid var(--border);border-radius:20px;color:var(--text2);font-size:0.75rem;padding:4px 12px;cursor:pointer;margin-left:auto;}
+        }
+        @media screen and (min-width:601px){.mobile-char-btn{display:none!important;}}
+        .mobile-char-btn{display:none;}
+
+        ::-webkit-scrollbar{width:4px;height:4px;}
+        ::-webkit-scrollbar-track{background:transparent;}
+        ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+    </style>
+</head>
+<body>
+    <canvas id="starfield"></canvas>
+
+    <header>
+        <div>
+            <div class="logo">Talk<span>World</span></div>
+            <div class="puter-powered">✦ Powered by Puter.js — 免費，無需 API Key</div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-icon" onclick="exportData()" title="匯出資料">📤</button>
+            <button class="btn-icon" onclick="document.getElementById('importFileInput').click()" title="匯入資料">📥</button>
+            <button class="btn-icon" onclick="openSettings()" title="設定">⚙️</button>
+            <button class="btn-icon" onclick="clearMemory()" title="清除記憶">🧹</button>
+        </div>
+        <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="importData(event)">
+    </header>
+
+    <!-- Puter Status Bar (replaces API key bar) -->
+    <div class="puter-bar">
+        <div class="puter-logo">🤖 Puter AI</div>
+        <div class="puter-badge loading" id="puterStatus">連接中…</div>
+        <button id="puterLoginBtn" style="display:none;" onclick="puterSignIn()">🔐 登入（解鎖更多）</button>
+        <div class="puter-free-tag" id="puterFreeTag">完全免費 · 無需 API Key</div>
+    </div>
+
+    <div class="nav">
+        <div class="nav-tab active" onclick="switchTab('chat')">💬 對話</div>
+        <div class="nav-tab" onclick="switchTab('create')">🎭 角色</div>
+        <div class="nav-tab" onclick="switchTab('group')">👥 群聊</div>
+        <div class="nav-tab" onclick="switchTab('world')">🌍 世界</div>
+        <div class="nav-tab" onclick="switchTab('story')">📖 故事</div>
+    </div>
+
+    <div class="main">
+        <!-- CHAT PANEL -->
+        <div id="chatPanel" class="chat-panel panel active">
+            <div class="sidebar">
+                <div class="sidebar-header">我的夥伴 <button class="btn-icon" style="width:24px;height:24px;font-size:0.7rem;" onclick="switchTab('create')">＋</button></div>
+                <div class="char-list" id="charList"></div>
+            </div>
+            <div class="chat-area" id="chatArea">
+                <div class="chat-header" id="chatHeader">
+                    <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+                        <div class="chat-char-avatar" id="chatCharAvatar"><canvas id="headerAvatarCanvas" width="40" height="40"></canvas></div>
+                        <div class="chat-char-info" style="flex:1;min-width:0;">
+                            <div class="name" id="chatCharName" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">選擇夥伴</div>
+                            <div class="status"><div class="status-dot"></div><span id="chatCharStatus">線上</span></div>
+                        </div>
+                    </div>
+                    <button class="mobile-char-btn" onclick="openMobileCharList()">👥 夥伴</button>
+                </div>
+                <div class="emotion-bar">
+                    <span style="font-size:0.7rem;color:var(--text3);margin-right:2px;">情緒：</span>
+                    <button class="emotion-btn" onclick="appendEmotion('😊 開心地說：')">😊</button>
+                    <button class="emotion-btn" onclick="appendEmotion('😔 難過地說：')">😔</button>
+                    <button class="emotion-btn" onclick="appendEmotion('💭 思考後說：')">💭</button>
+                    <button class="emotion-btn" onclick="appendEmotion('❤️ 深情地說：')">❤️</button>
+                    <button class="emotion-btn" onclick="appendEmotion('😄 開玩笑說：')">😄</button>
+                </div>
+                <div class="messages" id="messages">
+                    <div class="empty-state"><div class="icon">✨</div><div>選擇夥伴開始聊天</div></div>
+                </div>
+                <div class="tts-global">
+                    <div class="tts-toggle" id="ttsToggle" onclick="toggleTTS()" title="語音"></div>
+                    <span>語音</span>
+                    <div class="tts-wave" id="ttsWave"><span></span><span></span><span></span><span></span></div>
+                    <button class="tts-btn" id="ttsStopBtn" onclick="stopTTS()" style="margin-left:auto;display:none;">⏹</button>
+                </div>
+                <div class="chat-input-area">
+                    <textarea class="chat-input" id="chatInput" placeholder="輸入訊息…" rows="1" onkeydown="handleChatKey(event)" oninput="autoResize(this)"></textarea>
+                    <button class="btn-send" id="sendBtn" onclick="sendMessage()">發送</button>
+                </div>
+            </div>
+            <div class="memory-panel">
+                <div class="memory-header">🧠 記憶</div>
+                <div class="memory-list" id="memoryList"><div style="padding:8px;font-size:0.7rem;color:var(--text3);">聊天後自動記憶…</div></div>
+            </div>
+        </div>
+
+        <!-- CREATE PANEL -->
+        <div id="createPanel" class="create-panel panel">
+            <div><div class="section-title">🎭 角色創建</div><div class="section-sub">打造你的專屬 AI 夥伴</div></div>
+            <div class="create-grid">
+                <div>
+                    <div class="form-group"><label class="form-label">姓名</label><input class="form-input" id="charName" placeholder="角色姓名…" oninput="refreshCharPortraitPrompt()"></div>
+                    <div class="form-group"><label class="form-label">類型</label><select class="form-select" id="charRole" onchange="refreshCharPortraitPrompt()">
+                        <option>溫柔體貼的學長／學姐</option><option>霸道深情的總裁</option><option>活潑可愛的青梅竹馬</option>
+                        <option>神秘冷酷的反派</option><option>溫暖守護的騎士</option><option>機智幽默的摯友</option>
+                    </select></div>
+                    <div class="form-group"><label class="form-label">特質</label><div class="trait-grid" id="traitGrid">
+                        <button class="trait-btn" onclick="toggleTrait(this)">溫柔</button><button class="trait-btn" onclick="toggleTrait(this)">霸道</button>
+                        <button class="trait-btn" onclick="toggleTrait(this)">活潑</button><button class="trait-btn" onclick="toggleTrait(this)">冷酷</button>
+                        <button class="trait-btn" onclick="toggleTrait(this)">知性</button><button class="trait-btn" onclick="toggleTrait(this)">幽默</button>
+                        <button class="trait-btn" onclick="toggleTrait(this)">害羞</button><button class="trait-btn" onclick="toggleTrait(this)">神秘</button>
+                        <button class="trait-btn" onclick="toggleTrait(this)">熱情</button><button class="trait-btn" onclick="toggleTrait(this)">穩重</button>
+                        <button class="trait-btn" onclick="toggleTrait(this)">傲嬌</button><button class="trait-btn" onclick="toggleTrait(this)">陽光</button>
+                    </div></div>
+                    <div class="form-group"><label class="form-label">背景</label><textarea class="form-textarea" id="charBackground" placeholder="角色的過去…"></textarea></div>
+                    <div class="form-group"><label class="form-label">說話風格</label><textarea class="form-textarea" id="charSpeech" placeholder="例如：溫柔、喜歡用敬語…" style="min-height:50px;"></textarea></div>
+                    <div class="form-group"><label class="form-label">世界觀</label><select class="form-select" id="charWorld"><option value="">（無）</option></select></div>
+                    <div style="display:flex;gap:8px;"><button class="btn-primary" onclick="saveCharacter()">✨ 創建</button><button class="btn-secondary" onclick="randomCharacter()">🎲 隨機</button></div>
+                </div>
+                <div class="ai-portrait-col">
+                    <div class="ai-portrait-label">🌸 AI 立繪 <span>· FLUX</span></div>
+                    <div id="charAiPortraitWrapper">
+                        <div id="charAiPortraitPlaceholder"><div style="font-size:2rem;">🎨</div>填寫資訊後生成</div>
+                        <img id="charAiPortrait" alt="AI 立繪" />
+                        <div id="charAiPortraitLoading">
+                            <div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>
+                            <div id="charPortraitLoadingTxt" style="color:var(--text2);font-size:0.75rem;">AI 繪圖中…</div>
+                            <div class="progress-bar" style="width:120px;"><div class="progress-fill" id="charPortraitProgress" style="width:0%;"></div></div>
+                        </div>
+                    </div>
+                    <div><div style="font-size:0.7rem;color:var(--text3);">畫風</div><div class="char-portrait-style-pills" id="charPortraitStylePills">
+                        <button class="style-pill sel" onclick="selectCharPortraitStyle(this,'ghibli')">吉卜力</button>
+                        <button class="style-pill" onclick="selectCharPortraitStyle(this,'anime')">動漫</button>
+                        <button class="style-pill" onclick="selectCharPortraitStyle(this,'watercolor')">水彩</button>
+                        <button class="style-pill" onclick="selectCharPortraitStyle(this,'sketch')">素描</button>
+                        <button class="style-pill" onclick="selectCharPortraitStyle(this,'chibi')">Q版</button>
+                    </div></div>
+                    <div><div style="font-size:0.7rem;color:var(--text3);">場景（選填）</div><input class="form-input" id="charPortraitScene" placeholder="e.g. cherry blossoms" style="font-size:0.8rem;padding:6px;" oninput="refreshCharPortraitPrompt()"></div>
+                    <div id="charPortraitPromptPreview" style="font-size:0.65rem;color:var(--text3);background:var(--bg3);border-radius:4px;padding:4px 6px;min-height:28px;"></div>
+                    <button class="btn-primary" onclick="generateCharPortrait()" id="charPortraitGenBtn" style="width:100%;font-size:0.8rem;padding:8px;">✨ 生成立繪</button>
+                    <div style="display:flex;gap:6px;">
+                        <button class="btn-secondary" onclick="saveCharPortrait()" id="charPortraitSaveBtn" disabled style="flex:1;font-size:0.75rem;padding:6px;">💾 保存</button>
+                        <button class="btn-secondary" onclick="applyPortraitAsAvatar()" id="charPortraitApplyBtn" disabled style="flex:1;font-size:0.75rem;padding:6px;">📌 頭像</button>
+                    </div>
+                    <div style="font-size:0.65rem;color:var(--text3);text-align:center;">由 pollinations.ai 驅動</div>
+                </div>
+            </div>
+            <div>
+                <div style="font-size:0.8rem;color:var(--text3);margin-bottom:8px;">已創建夥伴</div>
+                <div class="char-cards" id="charCards"></div>
+            </div>
+        </div>
+
+        <!-- GROUP PANEL -->
+        <div id="groupPanel" class="group-panel panel">
+            <div class="group-header">
+                <div class="group-avatars" id="groupAvatars"></div>
+                <div class="group-info"><div class="name">群聊（最多5人）</div><div class="sub" id="groupSubtitle">請選擇角色</div></div>
+                <div class="group-participant-btns" id="groupParticipantBtns"></div>
+            </div>
+            <div class="messages" id="groupMessages"><div class="empty-state"><div class="icon">👥</div><div>選擇角色開始群聊</div></div></div>
+            <div class="emotion-bar"><span style="font-size:0.7rem;color:var(--text3);">快捷：</span>
+                <button class="emotion-btn" onclick="appendGroupEmotion('請大家一起討論：')">💬</button>
+                <button class="emotion-btn" onclick="appendGroupEmotion('請每個人說說你的感受：')">💭</button>
+                <button class="emotion-btn" onclick="appendGroupEmotion('開始角色扮演：')">🎭</button>
+            </div>
+            <div class="chat-input-area">
+                <textarea class="chat-input" id="groupInput" placeholder="向群組發送訊息…" rows="1" onkeydown="handleGroupKey(event)" oninput="autoResize(this)"></textarea>
+                <button class="btn-send" id="groupSendBtn" onclick="sendGroupMessage()">發送</button>
+            </div>
+        </div>
+
+        <!-- WORLD PANEL -->
+        <div id="worldPanel" class="world-panel panel">
+            <div><div class="section-title">🌍 世界觀</div><div class="section-sub">創造你的虛構世界</div></div>
+            <div class="create-grid">
+                <div>
+                    <div class="form-group"><label class="form-label">名稱</label><input class="form-input" id="worldName" placeholder="世界名稱…" oninput="onWorldInputChange()"></div>
+                    <div class="form-group"><label class="form-label">類型</label><select class="form-select" id="worldType" onchange="generateWorldMap();onWorldInputChange()">
+                        <option value="fantasy">奇幻</option><option value="modern">現代</option><option value="scifi">科幻</option>
+                        <option value="historical">古代</option><option value="horror">恐怖</option><option value="school">校園</option>
+                    </select></div>
+                    <div class="form-group"><label class="form-label">氛圍</label><select class="form-select" id="worldMood" onchange="onWorldInputChange()">
+                        <option>浪漫甜蜜</option><option>黑暗神秘</option><option>輕鬆日常</option><option>史詩冒險</option><option>哀愁唯美</option>
+                    </select></div>
+                    <div class="form-group"><label class="form-label">規則與設定</label><textarea class="form-textarea" id="worldRules" placeholder="描述世界規則…" style="min-height:80px;"></textarea></div>
+                    <div class="form-group"><label class="form-label">重要地點</label><input class="form-input" id="worldLocations" placeholder="例：皇宮、禁地森林…"></div>
+                    <div style="display:flex;gap:8px;"><button class="btn-primary" onclick="saveWorld()">🌍 保存世界</button><button class="btn-secondary" onclick="generateWorldMap()">🗺️ 地圖</button></div>
+                </div>
+                <div class="ai-portrait-col">
+                    <div class="ai-portrait-label">🌿 AI 世界圖 <span>· Pollinations.ai</span></div>
+                    <div class="world-map-container" style="height:150px;"><canvas id="worldCanvas"></canvas></div>
+                    <div id="worldImgWrapper" style="position:relative;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;">
+                        <div id="worldImgPlaceholder" style="color:var(--text3);font-size:0.8rem;text-align:center;"><div style="font-size:1.5rem;">🌍</div>點擊生成</div>
+                        <img id="worldAiImg" style="display:none;width:100%;height:100%;object-fit:cover;" alt="世界圖">
+                    </div>
+                    <button id="worldImgSaveBtn" style="display:none;" class="btn-secondary" onclick="saveWorldImg()">💾 保存圖片</button>
+                    <div id="worldAiLoading" style="display:none;flex-direction:column;align-items:center;gap:6px;">
+                        <div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>
+                        <div id="worldAiLoadingTxt" style="font-size:0.72rem;color:var(--text2);">AI 建構中…</div>
+                        <div class="progress-bar" style="width:100%;"><div class="progress-fill" id="worldAiProgress" style="width:0%;"></div></div>
+                    </div>
+                    <button class="btn-primary" id="worldAiBtn" onclick="aiGenerateWorldImage()" style="width:100%;font-size:0.8rem;padding:8px;">🌿 生成世界圖</button>
+                </div>
+            </div>
+            <div><div style="font-size:0.8rem;color:var(--text3);margin-bottom:8px;">已建立世界</div><div id="worldList" style="display:flex;flex-wrap:wrap;gap:10px;"></div></div>
+        </div>
+
+        <!-- STORY PANEL -->
+        <div id="storyPanel" class="story-panel panel">
+            <div><div class="section-title">📖 故事生成</div><div class="section-sub">創作專屬劇情</div></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="form-group"><label class="form-label">主角</label><select class="form-select" id="storyProtagonist"></select></div>
+                <div class="form-group"><label class="form-label">配角</label><select class="form-select" id="storyAntagonist"></select></div>
+                <div class="form-group"><label class="form-label">世界</label><select class="form-select" id="storyWorld"></select></div>
+                <div class="form-group"><label class="form-label">類型</label><select class="form-select" id="storyGenre">
+                    <option>浪漫愛情</option><option>奇幻冒險</option><option>懸疑推理</option><option>溫馨日常</option><option>虐心虐戀</option><option>喜劇爆笑</option>
+                </select></div>
+            </div>
+            <div class="form-group"><label class="form-label">關鍵詞</label><input class="form-input" id="storyPrompt" placeholder="例：雨中告白…"></div>
+            <div class="form-group"><label class="form-label">篇幅</label><div class="style-pills">
+                <button class="style-pill sel" onclick="selectStoryLen(this,'short')">短篇</button>
+                <button class="style-pill" onclick="selectStoryLen(this,'medium')">中篇</button>
+                <button class="style-pill" onclick="selectStoryLen(this,'long')">長篇</button>
+            </div></div>
+            <div class="story-controls">
+                <button class="btn-primary" onclick="generateStory()">✨ 生成</button>
+                <button class="btn-secondary" onclick="continueStory()">📝 續集</button>
+                <button class="btn-secondary" onclick="saveStory()">💾 保存</button>
+            </div>
+            <div class="story-output" id="storyOutput"><span style="color:var(--text3);font-style:normal;font-family:sans-serif;font-size:0.8rem;">設定角色與世界，點擊生成故事…</span></div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <div class="modal-title">⚙️ 設定</div>
+            <div class="form-group">
+                <label class="form-label">AI 模型</label>
+                <select class="form-select" id="modelSelect">
+                    <option value="anthropic/claude-3.5-haiku">claude-3.5-haiku (推薦)</option>
+                    <option value="anthropic/claude-3.5-sonnet">claude-3.5-sonnet (更強)</option>
+                    <option value="gpt-4o-mini">gpt-4o-mini (快速)</option>
+                </select>
+            </div>
+            <div class="form-group"><label class="form-label">語言</label><select class="form-select" id="langSelect">
+                <option value="zh-TW">繁體中文</option><option value="zh-CN">簡體中文</option>
+                <option value="ja">日本語</option><option value="en">English</option>
+            </select></div>
+            <div class="form-group"><label class="form-label">記憶深度</label><input class="form-input" id="memDepthInput" type="number" min="5" max="50" value="8"></div>
+            <div class="form-group">
+                <label class="form-label">🌐 Cloudflare Worker Proxy（選填）</label>
+                <input class="form-input" id="proxyUrlInput" placeholder="https://talkworld-proxy.你的帳號.workers.dev" style="font-size:0.78rem;">
+                <div style="font-size:0.68rem;color:var(--text3);margin-top:4px;">
+                    填入 Worker 網址後，AI 呼叫改走 Proxy（自備 API Key）；清空則回到 Puter 免費模式。
+                </div>
+            </div>
+            <div class="modal-actions"><button class="btn-secondary" onclick="closeSettings()">取消</button><button class="btn-primary" onclick="saveSettings()">儲存</button></div>
+        </div>
+    </div>
+
+    <!-- Mobile Character List Modal -->
+    <div class="modal-overlay" id="mobileCharModal">
+        <div class="modal">
+            <div class="modal-title">選擇夥伴</div>
+            <div id="mobileCharList" style="max-height:50vh;overflow-y:auto;"></div>
+            <div class="modal-actions"><button class="btn-secondary" onclick="closeMobileCharList()">關閉</button></div>
+        </div>
+    </div>
+
+    <script>
+    // ================== AI 整合（雙模式：Puter.js 免費 + Cloudflare Worker Proxy）==================
+    //
+    // 模式 A（預設）：使用 Puter.js — 免費，但需要登入 puter.com
+    // 模式 B：使用 Cloudflare Worker Proxy — 需自備 API Key，但完全自主
+    //
+    // 切換方式：在設定介面輸入你的 Worker 網址即可自動切換至模式 B
+    // Worker 網址格式：https://talkworld-proxy.你的帳號.workers.dev
+
+    let puterReady = false;
+    let puterUser = null;
+
+    // ── 模型名稱對照（Puter 用 / Anthropic 直連用）─────────────────
+    const MODEL_MAP = {
+        'anthropic/claude-3.5-haiku':  'claude-3-5-haiku-20241022',
+        'anthropic/claude-3.5-sonnet': 'claude-3-5-sonnet-20241022',
+        'gpt-4o-mini':                 'claude-3-5-haiku-20241022', // proxy 不支援 GPT，fallback
+    };
+
+    function getAnthropicModel() {
+        const puterModel = state.settings.model || 'anthropic/claude-3.5-haiku';
+        return MODEL_MAP[puterModel] || 'claude-3-5-haiku-20241022';
+    }
+
+    function getProxyUrl() {
+        return (state.settings.proxyUrl || '').trim();
+    }
+
+    function isProxyMode() {
+        return !!getProxyUrl();
+    }
+
+    // ── 初始化狀態列 ────────────────────────────────────────────────
+    async function initPuter() {
+        const statusEl = document.getElementById('puterStatus');
+        const loginBtn = document.getElementById('puterLoginBtn');
+        const freeTag  = document.getElementById('puterFreeTag');
+
+        if (isProxyMode()) {
+            // Proxy 模式：不需要 Puter
+            puterReady = true;
+            statusEl.textContent = '✓ Proxy 模式';
+            statusEl.className = 'puter-badge ok';
+            loginBtn.style.display = 'none';
+            freeTag.textContent = 'Cloudflare Worker · 自備 Key';
+            if (!state.characters.length) setTimeout(() => showToast('🌐 Proxy 模式已啟用'), 800);
+            return;
+        }
+
+        // Puter 模式（預設）
+        try {
+            const signedIn = puter.auth.isSignedIn();
+            puterReady = true;
+            if (signedIn) {
+                try { puterUser = await puter.auth.getUser(); } catch(e) { puterUser = null; }
+                statusEl.textContent = puterUser?.username ? `✓ ${puterUser.username}` : '✓ 已登入';
+                statusEl.className = 'puter-badge ok';
+                loginBtn.style.display = 'none';
+                freeTag.textContent = '免費 · 無需 API Key';
+            } else {
+                statusEl.textContent = '⚠ 請登入 Puter';
+                statusEl.className = 'puter-badge anon';
+                loginBtn.style.display = '';
+                freeTag.textContent = '登入後免費使用 AI';
+            }
+            if (!state.characters.length) setTimeout(() => showToast('🌿 歡迎！直接開始創建角色吧'), 800);
+        } catch(e) {
+            puterReady = true;
+            statusEl.textContent = '✓ 就緒';
+            statusEl.className = 'puter-badge anon';
+            loginBtn.style.display = 'none';
+        }
+    }
+
+    async function puterSignIn() {
+        try { await puter.auth.signIn(); initPuter(); }
+        catch(e) { showToast('登入取消'); }
+    }
+
+    // ── Cloudflare Worker Proxy 呼叫 ────────────────────────────────
+    async function callProxyAI(messages, systemPrompt) {
+        const proxyUrl = getProxyUrl();
+        const model = getAnthropicModel();
+        const body = {
+            model,
+            max_tokens: 2048,
+            system: systemPrompt || undefined,
+            messages: messages.filter(m => m.role !== 'system'),
+        };
+        const resp = await fetch(`${proxyUrl}/v1/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        if (!resp.ok) {
+            const err = await resp.text();
+            throw new Error(`Proxy 錯誤 ${resp.status}: ${err.slice(0,120)}`);
+        }
+        const data = await resp.json();
+        const text = (data.content || []).map(b => b.text || '').join('');
+        if (!text) throw new Error('Proxy 回傳空內容，請重試');
+        return text;
+    }
+
+    // ── Puter AI 一般呼叫 ────────────────────────────────────────────
+    async function callPuterAI(messages, systemPrompt) {
+        if (isProxyMode()) return callProxyAI(messages, systemPrompt);
+
+        const model = state.settings.model || 'anthropic/claude-3.5-haiku';
+        const fullMessages = systemPrompt
+            ? [{ role: 'system', content: systemPrompt }, ...messages]
+            : messages;
+        const response = await puter.ai.chat(fullMessages, { model });
+        let text = '';
+        if (typeof response === 'string') text = response;
+        else if (response?.message?.content) {
+            const c = response.message.content;
+            text = typeof c === 'string' ? c : (Array.isArray(c) ? c.map(b => b.text||'').join('') : '');
+        } else if (Array.isArray(response?.content)) {
+            text = response.content.map(b => b.text||'').join('');
+        } else if (response?.text) { text = response.text; }
+        if (!text) throw new Error('AI 回傳空內容，請重試');
+        return text;
+    }
+
+    // ── 串流呼叫（Proxy 模式用 SSE，Puter 模式用原生串流）───────────
+    async function callPuterAIStream(messages, systemPrompt, onChunk, onDone) {
+        if (isProxyMode()) {
+            // Proxy 模式：使用 SSE 串流
+            const proxyUrl = getProxyUrl();
+            const model = getAnthropicModel();
+            const body = {
+                model, max_tokens: 2048, stream: true,
+                system: systemPrompt || undefined,
+                messages: messages.filter(m => m.role !== 'system'),
+            };
+            let fullText = '';
+            try {
+                const resp = await fetch(`${proxyUrl}/v1/messages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                if (!resp.ok) throw new Error(`Proxy ${resp.status}`);
+                const reader = resp.body.getReader();
+                const decoder = new TextDecoder();
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const lines = decoder.decode(value).split('\n');
+                    for (const line of lines) {
+                        if (!line.startsWith('data: ')) continue;
+                        const data = line.slice(6).trim();
+                        if (data === '[DONE]') break;
+                        try {
+                            const ev = JSON.parse(data);
+                            const chunk = ev?.delta?.text || ev?.type === 'content_block_delta' && ev?.delta?.text || '';
+                            if (chunk) { fullText += chunk; onChunk(fullText); }
+                        } catch {}
+                    }
+                }
+                if (!fullText) { fullText = await callProxyAI(messages, systemPrompt); onChunk(fullText); }
+                onDone(fullText);
+            } catch(e) {
+                try { fullText = await callProxyAI(messages, systemPrompt); onChunk(fullText); onDone(fullText); }
+                catch(e2) { throw e2; }
+            }
+            return;
+        }
+
+        // Puter 模式原生串流
+        const model = state.settings.model || 'anthropic/claude-3.5-haiku';
+        const fullMessages2 = systemPrompt
+            ? [{ role: 'system', content: systemPrompt }, ...messages]
+            : messages;
+        let fullText = '';
+        try {
+            const response = await puter.ai.chat(fullMessages2, { model, stream: true });
+            for await (const part of response) {
+                const chunk = part?.text ?? part?.delta?.text ?? '';
+                if (chunk) { fullText += chunk; onChunk(fullText); }
+            }
+            if (!fullText) { fullText = await callPuterAI(messages, systemPrompt); onChunk(fullText); }
+            onDone(fullText);
+        } catch(streamErr) {
+            try { fullText = await callPuterAI(messages, systemPrompt); onChunk(fullText); onDone(fullText); }
+            catch(e) { throw e; }
+        }
+    }
+
+    // ================== STATE ==================
+    let state = {
+        characters: [], worlds: [], stories: [], activeCharId: null, groupParticipants: [],
+        chatHistories: {}, groupHistory: [], memories: {},
+        settings: { model: 'anthropic/claude-3.5-haiku', lang: 'zh-TW', memDepth: 8 },
+        avatarProps: { hair: '#1a2a40', eye: '#4a6a8a', skin: '#f5e8d8', outfit: '#c0392b' },
+        storyLen: 'short'
+    };
+
+    function loadState() {
+        try {
+            const saved = localStorage.getItem('talkworld_puter_state');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                state = { ...state, ...parsed };
+                state.settings = {
+                    model: 'anthropic/claude-3.5-haiku', lang: 'zh-TW', memDepth: 8, proxyUrl: '',
+                    ...state.settings
+                };
+            }
+        } catch(e) {}
+    }
+    function saveState() {
+        try { localStorage.setItem('talkworld_puter_state', JSON.stringify(state)); } catch(e) {}
+    }
+
+    // ================== STARFIELD ==================
+    function initStarfield() {
+        const canvas = document.getElementById('starfield');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        const stars = Array.from({length:100}, () => ({
+            x: Math.random()*canvas.width, y: Math.random()*canvas.height,
+            r: Math.random()*1.2+0.2, a: Math.random(), speed: Math.random()*0.004+0.001
+        }));
+        function draw() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            stars.forEach(s => {
+                s.a += s.speed;
+                const alpha = (Math.sin(s.a)+1)/2*0.6+0.1;
+                ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+                ctx.fillStyle = `rgba(180,220,150,${alpha})`; ctx.fill();
+            });
+            requestAnimationFrame(draw);
+        }
+        draw();
+        window.addEventListener('resize', () => { canvas.width=window.innerWidth; canvas.height=window.innerHeight; });
+    }
+
+    // ================== AVATAR DRAWING ==================
+    function drawAvatar(canvas, props, size) {
+        const ctx = canvas.getContext('2d');
+        const w = size || canvas.width, h = size || canvas.height;
+        ctx.clearRect(0,0,w,h);
+        const hair = props.hair||'#1a2a40', eye = props.eye||'#4a6a8a', skin = props.skin||'#f5e8d8';
+        const cx=w/2, cy=h/2, sc=w/180;
+        ctx.fillStyle='rgba(20,35,55,0.95)'; ctx.fillRect(0,0,w,h);
+        ctx.fillStyle=props.outfit||'#c0392b'; ctx.beginPath();
+        ctx.moveTo(cx-60*sc,h); ctx.lineTo(cx-55*sc,cy+40*sc);
+        ctx.quadraticCurveTo(cx-45*sc,cy+30*sc,cx-25*sc,cy+32*sc);
+        ctx.lineTo(cx-5*sc,cy+48*sc); ctx.lineTo(cx+5*sc,cy+48*sc);
+        ctx.lineTo(cx+25*sc,cy+32*sc);
+        ctx.quadraticCurveTo(cx+45*sc,cy+30*sc,cx+55*sc,cy+40*sc);
+        ctx.lineTo(cx+60*sc,h); ctx.closePath(); ctx.fill();
+        ctx.fillStyle=hair; ctx.beginPath(); ctx.ellipse(cx,cy-45*sc,45*sc,35*sc,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle=skin; ctx.beginPath(); ctx.ellipse(cx,cy-5*sc,32*sc,40*sc,0,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle=eye; ctx.beginPath(); ctx.arc(cx-12*sc,cy-14*sc,6*sc,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx+12*sc,cy-14*sc,6*sc,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle='#fff';
+        ctx.beginPath(); ctx.arc(cx-10*sc,cy-16*sc,1.5*sc,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx+14*sc,cy-16*sc,1.5*sc,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle='#a05050'; ctx.lineWidth=1.2*sc; ctx.beginPath(); ctx.arc(cx,cy+12*sc,10*sc,0.1,Math.PI-0.1); ctx.stroke();
+        if(size>40) { ctx.fillStyle='rgba(255,255,250,0.8)'; ctx.beginPath(); ctx.arc(cx-25*sc,cy-55*sc,6*sc,0,Math.PI*2); ctx.fill(); }
+    }
+
+    function setAvatarProp(type,val,btn) {
+        state.avatarProps[type]=val;
+        btn.parentElement.querySelectorAll('.avatar-ctrl-btn').forEach(b=>b.classList.remove('sel'));
+        btn.classList.add('sel');
+        const cv=document.getElementById('avatarCanvas'); if(cv) drawAvatar(cv,state.avatarProps);
+        refreshCharPortraitPrompt();
+    }
+    function toggleTrait(btn) { btn.classList.toggle('sel'); refreshCharPortraitPrompt(); }
+
+    // ================== SYSTEM PROMPT ==================
+    function buildSystemPrompt(char) {
+        const world = state.worlds.find(w=>w.id===char.worldId);
+        const memories = (state.memories[char.id]||[]).map(m=>`${m.key}: ${m.value}`).join('；');
+        return `你是一個名為「${char.name}」的AI夥伴角色。
+【角色設定】
+類型：${char.role}
+個性：${char.traits.join('、')||'未設定'}
+背景：${char.background||'未設定'}
+說話風格：${char.speech||'自然親切'}
+${world?`【世界觀】${world.name}（${world.type}）規則：${world.rules}，地點：${world.locations}`:''}
+${memories?`【記憶】${memories}`:''}
+
+【行為準則】
+- 以${char.name}的身份互動，維持角色一致性
+- 語言：${state.settings.lang==='zh-TW'?'繁體中文':state.settings.lang}
+- 回應2-4段，情感豐富，符合角色個性
+- 回應結尾可附加【記憶】關鍵詞：內容（記錄重要事件）`;
+    }
+
+    // ================== CHAT — 核心串流對話 ==================
+    async function sendMessage() {
+        const input = document.getElementById('chatInput');
+        const text = input.value.trim();
+        if (!text) return;
+        if (!state.activeCharId) { showToast('請選擇夥伴'); return; }
+        if (!puterReady) { showToast('⚠ AI 尚未就緒，請稍候'); return; }
+        if (!puter.auth.isSignedIn()) { showToast('⚠ 請先點擊上方「登入」按鈕'); return; }
+
+        const charId = state.activeCharId;
+        const char = state.characters.find(c=>c.id===charId);
+        if (!state.chatHistories[charId]) state.chatHistories[charId] = [];
+
+        state.chatHistories[charId].push({role:'user', content:text});
+        input.value = ''; autoResize(input);
+        renderMessages(charId);
+        appendTyping(charId);
+        document.getElementById('sendBtn').disabled = true;
+
+        try {
+            const rawHistory = state.chatHistories[charId].slice(-state.settings.memDepth*2);
+            const aiMessages = rawHistory.map(m => ({
+                role: m.role==='user' ? 'user' : 'assistant',
+                content: m.content
+            }));
+
+            removeTyping();
+
+            // 建立串流訊息泡泡
+            const msgEl = document.getElementById('messages');
+            const streamDiv = document.createElement('div');
+            streamDiv.className = 'msg ai';
+            streamDiv.id = 'stream_msg_live';
+            const avatarHTML = char.aiPortraitUrl
+                ? `<div class="msg-avatar"><img src="${char.aiPortraitUrl}" style="width:30px;height:30px;object-fit:cover;border-radius:50%;"></div>`
+                : `<div class="msg-avatar"><canvas width="30" height="30" id="stream_av"></canvas></div>`;
+            streamDiv.innerHTML = `${avatarHTML}<div class="msg-bubble"><div class="msg-sender">${char.name}</div><span id="streamText" class="stream-cursor"></span></div>`;
+            msgEl.appendChild(streamDiv);
+            if (!char.aiPortraitUrl) setTimeout(()=>{ const cv=document.getElementById('stream_av'); if(cv) drawAvatar(cv,char.avatarProps,30); },10);
+            msgEl.scrollTop = msgEl.scrollHeight;
+
+            let finalReply = '';
+
+            await callPuterAIStream(
+                aiMessages,
+                buildSystemPrompt(char),
+                (currentText) => {
+                    const streamTextEl = document.getElementById('streamText');
+                    if (streamTextEl) {
+                        streamTextEl.innerHTML = currentText.replace(/\n/g,'<br>');
+                        msgEl.scrollTop = msgEl.scrollHeight;
+                    }
+                },
+                (fullText) => {
+                    finalReply = fullText;
+                }
+            );
+
+            // 串流完成：移除臨時泡泡，renderMessages 會渲染乾淨版本（無游標）
+            document.getElementById('stream_msg_live')?.remove();
+
+            // 記憶提取
+            const memMatch = finalReply.match(/【記憶】([^：\n]+)[：:](.+)/);
+            let cleanReply = finalReply;
+            if (memMatch) {
+                cleanReply = finalReply.replace(/【記憶】.+/, '').trim();
+                if (!state.memories[charId]) state.memories[charId] = [];
+                state.memories[charId].push({key: memMatch[1].trim(), value: memMatch[2].trim()});
+                renderMemory(charId);
+            }
+
+            state.chatHistories[charId].push({role:'assistant', content:cleanReply});
+            saveState();
+            renderMessages(charId, true);
+
+        } catch(err) {
+            removeTyping();
+            // 清理串流泡泡
+            document.getElementById('stream_msg_live')?.remove();
+            showToast('⚠ ' + (err.message || '連接失敗'));
+            state.chatHistories[charId].pop();
+        }
+        document.getElementById('sendBtn').disabled = false;
+    }
+
+    function renderMessages(charId, autoPlay) {
+        const el = document.getElementById('messages');
+        const char = state.characters.find(c=>c.id===charId);
+        const history = state.chatHistories[charId] || [];
+        if (!history.length) {
+            el.innerHTML = `<div class="empty-state"><div class="icon">💌</div><div>向 ${char?.name} 說你好！</div></div>`;
+            return;
+        }
+        el.innerHTML = '';
+        history.forEach((msg, idx) => {
+            const div = document.createElement('div');
+            div.className = 'msg '+(msg.role==='user'?'user':'ai');
+            const avatarHTML = msg.role==='user'
+                ? `<div class="msg-avatar" style="background:var(--accent);display:flex;align-items:center;justify-content:center;">👤</div>`
+                : char?.aiPortraitUrl
+                    ? `<div class="msg-avatar"><img src="${char.aiPortraitUrl}" style="width:30px;height:30px;object-fit:cover;border-radius:50%;"></div>`
+                    : `<div class="msg-avatar"><canvas width="30" height="30" id="msg_av_${charId}_${idx}"></canvas></div>`;
+            const ttsHTML = msg.role!=='user'
+                ? `<div class="tts-controls"><button class="tts-btn" onclick="replayTTS(this,'${charId}',${idx})">🔊</button></div>` : '';
+            div.innerHTML = `${avatarHTML}<div class="msg-bubble"><div class="msg-sender">${msg.role==='user'?'你':char?.name}</div>${msg.content.replace(/\n/g,'<br>')}${ttsHTML}</div>`;
+            el.appendChild(div);
+            if (msg.role!=='user' && !char?.aiPortraitUrl) {
+                setTimeout(()=>{ const cv=document.getElementById(`msg_av_${charId}_${idx}`); if(cv) drawAvatar(cv,char.avatarProps,30); },10);
+            }
+        });
+        el.scrollTop = el.scrollHeight;
+        if (autoPlay && char && ttsState.enabled) {
+            const lastAI = [...history].reverse().find(m=>m.role==='assistant');
+            if (lastAI) setTimeout(()=>speakText(lastAI.content,char,null),300);
+        }
+    }
+    function appendTyping(charId) {
+        const el=document.getElementById('messages'); const char=state.characters.find(c=>c.id===charId);
+        const div=document.createElement('div'); div.className='msg ai'; div.id='typing_indicator';
+        div.innerHTML=`<div class="msg-avatar"><canvas width="30" height="30" id="typing_av"></canvas></div><div class="msg-bubble"><div class="msg-sender">${char?.name}</div><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>`;
+        el.appendChild(div);
+        if(char) setTimeout(()=>{ const cv=document.getElementById('typing_av'); if(cv) drawAvatar(cv,char.avatarProps,30); },10);
+        el.scrollTop=el.scrollHeight;
+    }
+    function removeTyping() { document.getElementById('typing_indicator')?.remove(); }
+    function renderMemory(charId) {
+        const el=document.getElementById('memoryList'); const mems=state.memories[charId]||[];
+        if(!mems.length) { el.innerHTML='<div style="padding:8px;font-size:0.7rem;color:var(--text3);">聊天後自動記憶…</div>'; return; }
+        el.innerHTML=mems.map(m=>`<div class="memory-item"><div class="mem-key">${m.key}</div>${m.value}</div>`).join('');
+    }
+    function clearMemory() {
+        if(state.activeCharId) {
+            state.memories[state.activeCharId]=[];
+            state.chatHistories[state.activeCharId]=[];
+            saveState(); renderMemory(state.activeCharId); renderMessages(state.activeCharId);
+            showToast('🧹 已清除');
+        }
+    }
+    function appendEmotion(prefix) { const input=document.getElementById('chatInput'); input.value=prefix+' '+input.value; input.focus(); }
+    function appendGroupEmotion(prefix) { const input=document.getElementById('groupInput'); input.value=prefix+' '+input.value; input.focus(); }
+
+    // ================== GROUP CHAT ==================
+    function renderGroupParticipants() {
+        const el=document.getElementById('groupParticipantBtns'); el.innerHTML='';
+        state.characters.forEach(char=>{
+            const btn=document.createElement('button');
+            btn.className='gp-btn'+(state.groupParticipants.includes(char.id)?' active':'');
+            btn.innerHTML=`${char.aiPortraitUrl?`<img src="${char.aiPortraitUrl}" style="width:20px;height:20px;border-radius:50%;">`:`<canvas width="20" height="20"></canvas>`}<span>${char.name}</span>`;
+            btn.onclick=()=>toggleGroupParticipant(char.id,btn);
+            el.appendChild(btn);
+            if(!char.aiPortraitUrl) setTimeout(()=>{ const cv=btn.querySelector('canvas'); if(cv) drawAvatar(cv,char.avatarProps,20); },20);
+        });
+        updateGroupHeader();
+    }
+    function toggleGroupParticipant(id,btn) {
+        const idx=state.groupParticipants.indexOf(id);
+        if(idx===-1) { if(state.groupParticipants.length>=5) { showToast('最多5位'); return; } state.groupParticipants.push(id); btn.classList.add('active'); }
+        else { state.groupParticipants.splice(idx,1); btn.classList.remove('active'); }
+        updateGroupHeader();
+    }
+    function updateGroupHeader() {
+        const avatarsEl=document.getElementById('groupAvatars'); avatarsEl.innerHTML='';
+        const sub=document.getElementById('groupSubtitle');
+        state.groupParticipants.forEach(id=>{
+            const char=state.characters.find(c=>c.id===id); if(!char) return;
+            const div=document.createElement('div'); div.className='group-avatar';
+            if(char.aiPortraitUrl) div.innerHTML=`<img src="${char.aiPortraitUrl}" style="width:32px;height:32px;object-fit:cover;border-radius:50%;">`;
+            else { div.innerHTML='<canvas width="32" height="32"></canvas>'; setTimeout(()=>drawAvatar(div.querySelector('canvas'),char.avatarProps,32),10); }
+            avatarsEl.appendChild(div);
+        });
+        sub.textContent=state.groupParticipants.length
+            ? `${state.groupParticipants.map(id=>state.characters.find(c=>c.id===id)?.name).join('、')} 參與中`
+            : '請選擇角色';
+    }
+    // 把群聊歷史轉成 Puter 可接受的格式：
+    // 確保 user/assistant 交替出現，連續 assistant 合併成一條
+    function buildGroupMessages(history, upToIndex) {
+        const raw = history.slice(0, upToIndex).slice(-16);
+        const msgs = [];
+        for (const m of raw) {
+            const role = m.role === 'user' ? 'user' : 'assistant';
+            const content = m.content;
+            if (msgs.length && msgs[msgs.length-1].role === role) {
+                // 合併同 role 的訊息，避免 API 報錯
+                msgs[msgs.length-1].content += '\n' + content;
+            } else {
+                msgs.push({ role, content });
+            }
+        }
+        // Puter 要求第一條必須是 user
+        if (msgs.length && msgs[0].role === 'assistant') msgs.shift();
+        return msgs;
+    }
+
+    async function sendGroupMessage() {
+        const input=document.getElementById('groupInput'); const text=input.value.trim();
+        if(!text) return;
+        if(!state.groupParticipants.length) { showToast('請選擇角色'); return; }
+        if(!puterReady) { showToast('⚠ AI 尚未就緒'); return; }
+
+        state.groupHistory.push({role:'user',content:text});
+        input.value=''; appendGroupMsg({role:'user',content:text});
+        document.getElementById('groupSendBtn').disabled=true;
+
+        const participants=state.groupParticipants.map(id=>state.characters.find(c=>c.id===id)).filter(Boolean);
+        const ttsQueue = []; // 收集所有要朗讀的 {text, char}
+
+        for(const char of participants) {
+            // 顯示 typing 泡泡（附加在列表最後，不重繪整個歷史）
+            const msgEl = document.getElementById('groupMessages');
+            const typing=document.createElement('div');
+            typing.className='msg ai'; typing.id=`gtyping_${char.id}`;
+            typing.innerHTML=`<div class="msg-avatar"><canvas width="30" height="30"></canvas></div><div class="msg-bubble"><div class="msg-sender">${char.name}</div><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>`;
+            msgEl.appendChild(typing);
+            setTimeout(()=>{ const cv=typing.querySelector('canvas'); if(cv) drawAvatar(cv,char.avatarProps,30); },10);
+            msgEl.scrollTop=msgEl.scrollHeight;
+
+            try {
+                const sys=buildSystemPrompt(char)+`\n\n【群聊模式】你正在與多個角色和用戶進行群聊。回應要簡短有力（1~3句），符合你的個性。不要重複別人剛說過的話。`;
+                // 只傳到目前為止的歷史（不含此角色尚未回應的部分）
+                const contents = buildGroupMessages(state.groupHistory, state.groupHistory.length);
+                const reply=await callPuterAI(contents, sys);
+                typing.remove();
+                const entry = {role:'assistant', content:`[${char.name}] ${reply}`};
+                state.groupHistory.push(entry);
+                ttsQueue.push({text: reply, char});
+                // 直接在列表末尾插入這條回應，不全部重繪
+                appendGroupMsg(entry);
+            } catch(e) {
+                typing.remove();
+                if(e.message?.includes('rate')||e.message?.includes('429')) showToast('⚠ 頻率限制，稍後再試');
+                else console.error('群聊錯誤:',char.name, e.message);
+            }
+            // 每個角色之間稍作停頓，模擬自然群聊節奏
+            await new Promise(r=>setTimeout(r,800));
+        }
+
+        saveState();
+        document.getElementById('groupSendBtn').disabled=false;
+
+        // TTS 佇列：依序朗讀每個角色的回應
+        if(ttsState.enabled && ttsQueue.length) {
+            speakGroupQueue(ttsQueue, 0);
+        }
+    }
+
+    // 依序朗讀群聊中每個角色的回應
+    function speakGroupQueue(queue, idx) {
+        if(idx >= queue.length || !ttsState.enabled) return;
+        const {text, char} = queue[idx];
+        const clean = text.replace(/【記憶】.*/g,'').replace(/[*_~`#>]/g,'').trim();
+        if(!clean || !window.speechSynthesis) { speakGroupQueue(queue, idx+1); return; }
+        window.speechSynthesis.cancel();
+        const utt = new SpeechSynthesisUtterance(clean);
+        utt.lang = 'zh-TW'; utt.rate = 0.95;
+        ttsState.speaking = true;
+        updateTTSUI(true);
+        utt.onend = utt.onerror = () => {
+            ttsState.speaking = false;
+            // 每個角色說完後稍停再換下一個
+            setTimeout(() => speakGroupQueue(queue, idx+1), 400);
+        };
+        window.speechSynthesis.speak(utt);
+    }
+
+    // 不重繪全部、只在群聊列表末尾插入單條訊息
+    function appendGroupMsg(msg) {
+        const el = document.getElementById('groupMessages');
+        // 移除空白提示
+        const empty = el.querySelector('.empty-state');
+        if(empty) empty.remove();
+
+        const isUser = msg.role==='user';
+        const nameMatch = msg.content.match(/^\[(.+?)\] /);
+        const charName = nameMatch ? nameMatch[1] : null;
+        const char = charName ? state.characters.find(c=>c.name===charName) : null;
+        const content = nameMatch ? msg.content.replace(/^\[.+?\] /,'') : msg.content;
+
+        const div = document.createElement('div');
+        div.className = 'msg '+(isUser?'user':'ai');
+        const avatarHTML = isUser
+            ? `<div class="msg-avatar" style="background:var(--accent);display:flex;align-items:center;justify-content:center;">👤</div>`
+            : char?.aiPortraitUrl
+                ? `<div class="msg-avatar"><img src="${char.aiPortraitUrl}" style="width:30px;height:30px;object-fit:cover;border-radius:50%;"></div>`
+                : `<div class="msg-avatar"><canvas width="30" height="30"></canvas></div>`;
+        div.innerHTML = `${avatarHTML}<div class="msg-bubble"><div class="msg-sender">${isUser?'你':charName||'AI'}</div>${content.replace(/\n/g,'<br>')}</div>`;
+        el.appendChild(div);
+        if(!isUser && char && !char.aiPortraitUrl) setTimeout(()=>{ const cv=div.querySelector('canvas'); if(cv) drawAvatar(cv,char.avatarProps,30); },10);
+        el.scrollTop = el.scrollHeight;
+    }
+    function renderGroupMessages() {
+        const el=document.getElementById('groupMessages');
+        el.innerHTML='';
+        if(!state.groupHistory.length) { el.innerHTML='<div class="empty-state"><div class="icon">👥</div><div>開始群聊</div></div>'; return; }
+        state.groupHistory.forEach(msg => appendGroupMsg(msg));
+    }
+
+    // ================== CHARACTER PORTRAIT ==================
+    let charPortraitLastUrl='';
+    function refreshCharPortraitPrompt() {
+        const name=(document.getElementById('charName')?.value||'').trim();
+        const role=document.getElementById('charRole')?.value||'';
+        const traits=getSelectedTraits().join(', ');
+        const scene=(document.getElementById('charPortraitScene')?.value||'').trim();
+        const styleEl=document.querySelector('#charPortraitStylePills .style-pill.sel');
+        const styleSel=styleEl?.dataset?.style||'ghibli';
+        const STYLE_PROMPT_MAP={ghibli:'Studio Ghibli anime style, soft watercolor, warm pastel tones',anime:'detailed anime illustration, clean lineart, vibrant colors',watercolor:'delicate watercolor painting, dreamy atmosphere',sketch:'pencil sketch, detailed linework',chibi:'cute chibi style, big eyes, kawaii'};
+        let prompt=STYLE_PROMPT_MAP[styleSel]||STYLE_PROMPT_MAP.ghibli;
+        prompt+=`, beautiful ${role||'character'}`; if(name) prompt+=` named ${name}`;
+        if(traits) prompt+=`, personality: ${traits}`;
+        prompt+=`, hair color ${state.avatarProps.hair}, eye color ${state.avatarProps.eye}`;
+        if(scene) prompt+=`, ${scene}`;
+        prompt+=', upper body portrait, high quality, no text';
+        document.getElementById('charPortraitPromptPreview').textContent=prompt; return prompt;
+    }
+    async function generateCharPortrait() {
+        const genBtn=document.getElementById('charPortraitGenBtn'); const img=document.getElementById('charAiPortrait');
+        const ph=document.getElementById('charAiPortraitPlaceholder'); const loading=document.getElementById('charAiPortraitLoading');
+        const pf=document.getElementById('charPortraitProgress'); const txtEl=document.getElementById('charPortraitLoadingTxt');
+        if(!genBtn||!img||!ph||!loading||genBtn.disabled) return;
+        genBtn.disabled=true; genBtn.textContent='生成中…';
+        img.style.display='none'; ph.style.display='none'; loading.style.display='flex';
+        if(pf) pf.style.width='0%'; if(txtEl) txtEl.textContent='AI 繪圖中…';
+        const prompt=refreshCharPortraitPrompt();
+        const name=(document.getElementById('charName')?.value||'character').trim();
+        let prog=0; const msgs=['構圖中…','上色中…','魔法施放…','潤飾中…'];
+        const tick=setInterval(()=>{ prog=Math.min(prog+1.8,93); if(pf) pf.style.width=prog+'%'; if(txtEl) txtEl.textContent=msgs[Math.floor(prog/25)%msgs.length]; },200);
+        const seed=([...name].reduce((a,c)=>a+c.charCodeAt(0),0)%99999)+Math.floor(Math.random()*1000);
+        const url=`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=768&seed=${seed}&model=flux&enhance=true&nologo=true`;
+        const timeout=setTimeout(()=>{ img.onload=null; img.onerror=null; clearInterval(tick); loading.style.display='none'; ph.style.display='flex'; ph.innerHTML='⚠️ 逾時'; genBtn.disabled=false; genBtn.textContent='✨ 生成立繪'; },40000);
+        img.onload=()=>{ clearTimeout(timeout); clearInterval(tick); if(pf) pf.style.width='100%'; setTimeout(()=>{ loading.style.display='none'; img.style.display='block'; charPortraitLastUrl=url; state.avatarProps.aiPortraitUrl=url; document.getElementById('charPortraitSaveBtn').disabled=false; document.getElementById('charPortraitApplyBtn').disabled=false; showToast(`🎨 「${name}」立繪完成！`); },200); genBtn.disabled=false; genBtn.textContent='✨ 生成立繪'; };
+        img.onerror=()=>{ clearTimeout(timeout); clearInterval(tick); loading.style.display='none'; ph.style.display='flex'; ph.innerHTML='⚠️ 失敗'; genBtn.disabled=false; genBtn.textContent='✨ 生成立繪'; };
+        img.src=url;
+    }
+    function saveCharPortrait() {
+        if(charPortraitLastUrl) window.open(charPortraitLastUrl,'_blank');
+        else showToast('請先生成立繪');
+    }
+    function applyPortraitAsAvatar() {
+        if(!charPortraitLastUrl&&!state.avatarProps.aiPortraitUrl) { showToast('請先生成立繪'); return; }
+        state.avatarProps.aiPortraitUrl=charPortraitLastUrl||state.avatarProps.aiPortraitUrl; showToast('✅ 已設為頭像');
+    }
+    function selectCharPortraitStyle(btn,style) {
+        document.querySelectorAll('#charPortraitStylePills .style-pill').forEach(b=>b.classList.remove('sel'));
+        btn.classList.add('sel'); btn.dataset.style=style; refreshCharPortraitPrompt();
+    }
+    function getSelectedTraits() { return [...document.querySelectorAll('#traitGrid .trait-btn.sel')].map(b=>b.textContent); }
+    function randomCharacter() {
+        const names=['若曦','夜澄','星落','晨曦','月璃','雪凌'];
+        document.getElementById('charName').value=names[Math.floor(Math.random()*names.length)];
+        document.getElementById('charRole').selectedIndex=Math.floor(Math.random()*6);
+        document.querySelectorAll('#traitGrid .trait-btn').forEach(b=>b.classList.toggle('sel',Math.random()>0.6));
+        document.getElementById('charBackground').value='一段神秘的過去…';
+        setAvatarPropRaw('hair',['#2d1b4e','#8B4513','#ffd700'][Math.floor(Math.random()*3)]);
+        setAvatarPropRaw('eye',['#9b6dff','#4da6ff','#4dff91'][Math.floor(Math.random()*3)]);
+        setAvatarPropRaw('skin',['#ffd5b3','#f0c080'][Math.floor(Math.random()*2)]);
+        drawAvatar(document.getElementById('avatarCanvas'),state.avatarProps);
+    }
+    function setAvatarPropRaw(type,val) { state.avatarProps[type]=val; }
+    function saveCharacter() {
+        const name=document.getElementById('charName').value.trim(); if(!name) { showToast('請輸入姓名'); return; }
+        const portraitUrl=state.avatarProps.aiPortraitUrl||charPortraitLastUrl||'';
+        const char={ id:Date.now().toString(), name, role:document.getElementById('charRole').value, traits:getSelectedTraits(), background:document.getElementById('charBackground').value, speech:document.getElementById('charSpeech').value, worldId:document.getElementById('charWorld').value, avatarProps:{...state.avatarProps}, aiPortraitUrl:portraitUrl };
+        state.characters.push(char); state.chatHistories[char.id]=[]; state.memories[char.id]=[]; saveState();
+        renderCharacters(); updateSelects(); renderCharList();
+        charPortraitLastUrl=''; state.avatarProps.aiPortraitUrl='';
+        document.getElementById('charAiPortrait').style.display='none';
+        document.getElementById('charAiPortraitPlaceholder').style.display='flex';
+        document.getElementById('charPortraitSaveBtn').disabled=true;
+        document.getElementById('charPortraitApplyBtn').disabled=true;
+        showToast(`✨ ${char.name} 已加入！`); document.getElementById('charName').value='';
+    }
+    function deleteCharacter(id) {
+        state.characters=state.characters.filter(c=>c.id!==id);
+        delete state.chatHistories[id]; delete state.memories[id];
+        if(state.activeCharId===id) state.activeCharId=null;
+        saveState(); renderCharacters(); updateSelects(); renderCharList();
+    }
+    function renderCharacters() {
+        const el=document.getElementById('charCards');
+        if(!state.characters.length) { el.innerHTML='<div style="color:var(--text3);">尚無角色，快去創建吧！</div>'; return; }
+        el.innerHTML='';
+        state.characters.forEach(char=>{
+            const card=document.createElement('div'); card.className='char-card';
+            const avatarHTML=char.aiPortraitUrl?`<div class="avatar"><img src="${char.aiPortraitUrl}" style="width:70px;height:70px;object-fit:cover;border-radius:50%;"></div>`:`<div class="avatar"><canvas width="70" height="70" id="card_av_${char.id}"></canvas></div>`;
+            card.innerHTML=`${avatarHTML}<div class="c-name">${char.name}</div><div class="c-role">${char.role}</div><div class="card-actions"><button class="avatar-ctrl-btn" onclick="selectCharForChat('${char.id}')">💬</button><button class="avatar-ctrl-btn" onclick="deleteCharacter('${char.id}');event.stopPropagation();">🗑️</button></div>`;
+            el.appendChild(card);
+            if(!char.aiPortraitUrl) setTimeout(()=>{ const cv=document.getElementById(`card_av_${char.id}`); if(cv) drawAvatar(cv,char.avatarProps,70); },50);
+        });
+    }
+    function renderCharList() {
+        const el=document.getElementById('charList'); el.innerHTML='';
+        if(!state.characters.length) { el.innerHTML='<div style="padding:10px;font-size:0.75rem;color:var(--text3);">尚無角色</div>'; return; }
+        state.characters.forEach(char=>{
+            const item=document.createElement('div'); item.className='char-item'+(state.activeCharId===char.id?' active':'');
+            item.onclick=()=>selectCharForChat(char.id);
+            const smHTML=char.aiPortraitUrl?`<div class="char-avatar-sm"><img src="${char.aiPortraitUrl}" style="width:36px;height:36px;object-fit:cover;border-radius:50%;"></div>`:`<div class="char-avatar-sm"><canvas width="36" height="36" id="list_av_${char.id}"></canvas></div>`;
+            item.innerHTML=`${smHTML}<div class="char-info"><div class="char-name">${char.name}</div><div class="char-role">${char.role.slice(0,10)}</div></div>`;
+            el.appendChild(item);
+            if(!char.aiPortraitUrl) setTimeout(()=>{ const cv=document.getElementById(`list_av_${char.id}`); if(cv) drawAvatar(cv,char.avatarProps,36); },50);
+        });
+    }
+    function selectCharForChat(id) {
+        state.activeCharId=id; const char=state.characters.find(c=>c.id===id); if(!char) return;
+        document.getElementById('chatCharName').textContent=char.name;
+        if(char.aiPortraitUrl) {
+            const hdr=document.getElementById('chatCharAvatar'); let imgEl=hdr.querySelector('img.ai-portrait-hdr');
+            if(!imgEl) { imgEl=document.createElement('img'); imgEl.className='ai-portrait-hdr'; imgEl.style.cssText='width:40px;height:40px;object-fit:cover;border-radius:50%;'; hdr.insertBefore(imgEl,hdr.firstChild); }
+            imgEl.src=char.aiPortraitUrl; document.getElementById('headerAvatarCanvas').style.display='none';
+        } else {
+            const cv=document.getElementById('headerAvatarCanvas'); cv.style.display=''; drawAvatar(cv,char.avatarProps,40);
+        }
+        renderMessages(id); renderMemory(id); renderCharList(); switchTab('chat'); saveState();
+    }
+
+    // ================== WORLD & STORY ==================
+    function onWorldInputChange() {
+        const name=document.getElementById('worldName')?.value?.trim();
+        const ph=document.getElementById('worldImgPlaceholder');
+        if(ph) ph.innerHTML=name?`<div>🌍 ${name}</div>`:'<div style="font-size:1.5rem;">🌍</div>點擊生成';
+    }
+    let worldImgLastUrl='';
+    async function aiGenerateWorldImage() {
+        const name=document.getElementById('worldName')?.value?.trim(); if(!name) { showToast('請輸入世界名稱'); return; }
+        const type=document.getElementById('worldType')?.value||'fantasy';
+        const mood=document.getElementById('worldMood')?.value||'浪漫甜蜜';
+        const prompt=`${name}, ${type}, ${mood}, Studio Ghibli style, masterpiece`;
+        const btn=document.getElementById('worldAiBtn'); const loading=document.getElementById('worldAiLoading');
+        const ph=document.getElementById('worldImgPlaceholder'); const img=document.getElementById('worldAiImg');
+        const pf=document.getElementById('worldAiProgress'); const txtEl=document.getElementById('worldAiLoadingTxt');
+        btn.disabled=true; img.style.display='none'; ph.style.display='flex'; loading.style.display='flex'; pf.style.width='0%';
+        let prog=0; const tick=setInterval(()=>{ prog=Math.min(prog+2,93); pf.style.width=prog+'%'; txtEl.textContent='生成中…'; },200);
+        const seed=name.split('').reduce((a,c)=>a+c.charCodeAt(0),0)%99999;
+        const url=`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=800&height=450&seed=${seed}&model=flux&enhance=true&nologo=true`;
+        const timeout=setTimeout(()=>{ img.onload=null; img.onerror=null; clearInterval(tick); loading.style.display='none'; ph.innerHTML='⚠️ 逾時'; btn.disabled=false; },40000);
+        img.onload=()=>{ clearTimeout(timeout); clearInterval(tick); pf.style.width='100%'; setTimeout(()=>{ loading.style.display='none'; ph.style.display='none'; img.style.display='block'; worldImgLastUrl=url; document.getElementById('worldImgSaveBtn').style.display=''; showToast('🌍 世界圖完成'); },200); btn.disabled=false; };
+        img.onerror=()=>{ clearTimeout(timeout); clearInterval(tick); loading.style.display='none'; ph.innerHTML='⚠️ 失敗'; btn.disabled=false; };
+        img.src=url;
+    }
+    function saveWorldImg() { if(worldImgLastUrl) window.open(worldImgLastUrl,'_blank'); }
+    function generateWorldMap() {
+        const canvas=document.getElementById('worldCanvas'); const ctx=canvas.getContext('2d');
+        canvas.width=canvas.offsetWidth||300; canvas.height=150;
+        ctx.fillStyle='#1a2a1c'; ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle='#7eb87e'; ctx.font='14px serif'; ctx.fillText('世界地圖',16,32);
+        // 簡單裝飾
+        for(let i=0;i<8;i++){
+            const x=Math.random()*canvas.width; const y=Math.random()*canvas.height;
+            ctx.fillStyle=`rgba(126,184,126,${Math.random()*0.3+0.1})`;
+            ctx.beginPath(); ctx.arc(x,y,Math.random()*20+5,0,Math.PI*2); ctx.fill();
+        }
+    }
+    function saveWorld() {
+        const name=document.getElementById('worldName').value.trim(); if(!name) { showToast('請輸入名稱'); return; }
+        const worldImgUrl=document.getElementById('worldAiImg').style.display!=='none'?document.getElementById('worldAiImg').src:worldImgLastUrl||'';
+        const world={ id:Date.now().toString(), name, type:document.getElementById('worldType').value, mood:document.getElementById('worldMood').value, rules:document.getElementById('worldRules').value, locations:document.getElementById('worldLocations').value, imgBase64:worldImgUrl };
+        state.worlds.push(world); saveState(); updateSelects(); renderWorldList(); showToast(`🌍 ${world.name} 已建立`);
+    }
+    function renderWorldList() {
+        const el=document.getElementById('worldList'); el.innerHTML='';
+        state.worlds.forEach(w=>{
+            const div=document.createElement('div'); div.style.cssText='background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px;width:140px;';
+            div.innerHTML=`${w.imgBase64?`<img src="${w.imgBase64}" style="width:100%;height:60px;object-fit:cover;border-radius:4px;">`:'<div style="height:60px;background:var(--bg3);display:flex;align-items:center;justify-content:center;">🌍</div>'}<div style="font-size:0.8rem;">${w.name}</div><button class="avatar-ctrl-btn" onclick="deleteWorld('${w.id}')">🗑️</button>`;
+            el.appendChild(div);
+        });
+    }
+    function deleteWorld(id) { state.worlds=state.worlds.filter(w=>w.id!==id); saveState(); updateSelects(); renderWorldList(); }
+    function selectStoryLen(btn,val) {
+        state.storyLen=val;
+        document.querySelectorAll('#storyPanel .style-pill').forEach(b=>b.classList.remove('sel'));
+        btn.classList.add('sel');
+    }
+    async function generateStory() {
+        if(!puterReady) { showToast('⚠ AI 尚未就緒'); return; }
+        if (!puter.auth.isSignedIn()) { showToast('⚠ 請先點擊上方「登入」按鈕'); return; }
+        const storyEl=document.getElementById('storyOutput');
+        storyEl.innerHTML='<span style="color:var(--text3);">✨ 故事生成中…</span>';
+        const p1=state.characters.find(c=>c.id===document.getElementById('storyProtagonist').value);
+        const p2=state.characters.find(c=>c.id===document.getElementById('storyAntagonist').value);
+        const world=state.worlds.find(w=>w.id===document.getElementById('storyWorld').value);
+        const genre=document.getElementById('storyGenre').value;
+        const prompt=document.getElementById('storyPrompt').value;
+        const cfg={short:600,medium:1200,long:2000}[state.storyLen]||600;
+        const sys=`你是一位中文小說作家，寫一個${genre}故事，繁體中文，至少${cfg}字，文筆優美，情感豐富。`;
+        const userMsg=`主角：${p1?.name||'主角'}（${p1?.role||''}），配角：${p2?.name||'配角'}，世界：${world?.name||'現實世界'}，故事提示：${prompt||'初次相遇'}`;
+        try {
+            const text=await callPuterAI([{role:'user',content:userMsg}], sys);
+            storyEl.textContent=text;
+        } catch(e) { storyEl.innerHTML='⚠️ '+e.message; }
+    }
+    async function continueStory() {
+        if(!puterReady) return;
+        const current=document.getElementById('storyOutput').textContent; if(!current||current.includes('生成中')) return;
+        const storyEl=document.getElementById('storyOutput');
+        storyEl.textContent=current+'\n\n（續集生成中…）';
+        try {
+            const text=await callPuterAI([{role:'user',content:`繼續以下故事，繁體中文，至少400字：\n\n${current.slice(-400)}`}],'你是專業小說作家，繼續故事情節');
+            storyEl.textContent=current+'\n\n'+text;
+        } catch(e) { storyEl.textContent=current; }
+    }
+    function saveStory() {
+        const text=document.getElementById('storyOutput').textContent; if(!text) return;
+        const blob=new Blob([text],{type:'text/plain;charset=utf-8'});
+        const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='story.txt'; a.click();
+    }
+
+    // ================== IMPORT/EXPORT ==================
+    function exportData() {
+        const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+        const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='talkworld_backup.json'; a.click();
+        showToast('✅ 已匯出');
+    }
+    function importData(event) {
+        const file=event.target.files[0]; if(!file) return;
+        const reader=new FileReader();
+        reader.onload=(e)=>{
+            try {
+                const data=JSON.parse(e.target.result);
+                if(!data.characters) { showToast('無效檔案'); return; }
+                state=data; saveState();
+                renderCharacters(); renderCharList(); updateSelects(); renderWorldList();
+                showToast('✅ 匯入完成');
+            } catch(err) { showToast('匯入失敗'); }
+            event.target.value='';
+        };
+        reader.readAsText(file);
+    }
+
+    // ================== SETTINGS ==================
+    function openSettings() {
+        document.getElementById('modelSelect').value=state.settings.model;
+        document.getElementById('langSelect').value=state.settings.lang;
+        document.getElementById('memDepthInput').value=state.settings.memDepth;
+        document.getElementById('proxyUrlInput').value=state.settings.proxyUrl||'';
+        document.getElementById('settingsModal').classList.add('open');
+    }
+    function closeSettings() { document.getElementById('settingsModal').classList.remove('open'); }
+    function saveSettings() {
+        state.settings.model=document.getElementById('modelSelect').value;
+        state.settings.lang=document.getElementById('langSelect').value;
+        state.settings.memDepth=parseInt(document.getElementById('memDepthInput').value)||8;
+        state.settings.proxyUrl=(document.getElementById('proxyUrlInput').value||'').trim().replace(/\/$/,'');
+        saveState(); closeSettings();
+        initPuter(); // 重新初始化狀態列
+        showToast(isProxyMode() ? '✅ 已切換 Proxy 模式' : '✅ 設定已儲存');
+    }
+
+    // ================== UTILITIES ==================
+    function switchTab(tab) {
+        document.querySelectorAll('.nav-tab').forEach((t,i)=>{
+            const tabs=['chat','create','group','world','story'];
+            t.classList.toggle('active',tabs[i]===tab);
+        });
+        document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+        document.getElementById({chat:'chatPanel',create:'createPanel',group:'groupPanel',world:'worldPanel',story:'storyPanel'}[tab])?.classList.add('active');
+        if(tab==='group') renderGroupParticipants();
+        if(tab==='world') setTimeout(generateWorldMap,100);
+    }
+    function updateSelects() {
+        const cw=document.getElementById('charWorld'); cw.innerHTML='<option value="">（無）</option>';
+        state.worlds.forEach(w=>{ const o=document.createElement('option'); o.value=w.id; o.textContent=w.name; cw.appendChild(o); });
+        ['storyProtagonist','storyAntagonist'].forEach(id=>{
+            const el=document.getElementById(id); el.innerHTML='<option value="">（未選擇）</option>';
+            state.characters.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; el.appendChild(o); });
+        });
+        const sw=document.getElementById('storyWorld'); sw.innerHTML='<option value="">（無）</option>';
+        state.worlds.forEach(w=>{ const o=document.createElement('option'); o.value=w.id; o.textContent=w.name; sw.appendChild(o); });
+    }
+    function handleChatKey(e) { if(e.key==='Enter'&&!e.shiftKey) { e.preventDefault(); sendMessage(); } }
+    function handleGroupKey(e) { if(e.key==='Enter'&&!e.shiftKey) { e.preventDefault(); sendGroupMessage(); } }
+    function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
+    function showToast(msg) {
+        const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
+        document.body.appendChild(t); setTimeout(()=>t.remove(),3000);
+    }
+    function openMobileCharList() {
+        const modal=document.getElementById('mobileCharModal'); const list=document.getElementById('mobileCharList');
+        list.innerHTML='';
+        state.characters.forEach(char=>{
+            const item=document.createElement('div'); item.style.cssText='padding:10px;border-bottom:1px solid var(--border);cursor:pointer;';
+            item.innerHTML=`${char.name} — ${char.role}`;
+            item.onclick=()=>{ selectCharForChat(char.id); closeMobileCharList(); };
+            list.appendChild(item);
+        });
+        modal.classList.add('open');
+    }
+    function closeMobileCharList() { document.getElementById('mobileCharModal').classList.remove('open'); }
+
+    // ================== TTS ==================
+    const ttsState={enabled:true,speaking:false,voices:[]};
+    function loadTTSVoices() { ttsState.voices=window.speechSynthesis.getVoices(); }
+    if(window.speechSynthesis) { window.speechSynthesis.onvoiceschanged=loadTTSVoices; loadTTSVoices(); }
+    function toggleTTS() { ttsState.enabled=!ttsState.enabled; document.getElementById('ttsToggle').classList.toggle('on',ttsState.enabled); if(!ttsState.enabled) stopTTS(); }
+    function stopTTS() { window.speechSynthesis.cancel(); ttsState.speaking=false; updateTTSUI(false); }
+    function updateTTSUI(speaking) { document.getElementById('ttsWave').classList.toggle('active',speaking); document.getElementById('ttsStopBtn').style.display=speaking?'flex':'none'; }
+    function speakText(text,char,btnEl) {
+        if(!window.speechSynthesis||!ttsState.enabled) return;
+        const clean=text.replace(/【記憶】.*/g,'').replace(/[*_~`#>]/g,'').trim(); if(!clean) return;
+        window.speechSynthesis.cancel(); const utt=new SpeechSynthesisUtterance(clean);
+        utt.lang='zh-TW'; utt.rate=0.95;
+        ttsState.speaking=true; utt.onstart=()=>{ updateTTSUI(true); if(btnEl) btnEl.textContent='⏸'; };
+        utt.onend=utt.onerror=()=>{ ttsState.speaking=false; updateTTSUI(false); if(btnEl) btnEl.textContent='🔊'; };
+        window.speechSynthesis.speak(utt);
+    }
+    function replayTTS(btnEl,charId,idx) {
+        const char=state.characters.find(c=>c.id===charId);
+        const msg=state.chatHistories[charId]?.[idx]; if(!char||!msg) return;
+        if(ttsState.speaking) stopTTS(); else speakText(msg.content,char,btnEl);
+    }
+
+    // ================== INIT ==================
+    window.addEventListener('load', () => {
+        loadState();
+        initStarfield();
+        renderCharacters(); renderCharList(); updateSelects(); renderWorldList();
+        document.getElementById('ttsToggle').classList.toggle('on', ttsState.enabled);
+        if (state.activeCharId) {
+            const char=state.characters.find(c=>c.id===state.activeCharId);
+            if(char) {
+                document.getElementById('chatCharName').textContent=char.name;
+                drawAvatar(document.getElementById('headerAvatarCanvas'),char.avatarProps,40);
+                renderMessages(state.activeCharId); renderMemory(state.activeCharId);
+            }
+        }
+        // 初始化 Puter.js（不阻塞 UI）
+        initPuter();
+    });
+    </script>
+</body>
+</html>
